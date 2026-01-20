@@ -1,14 +1,29 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/runAlgo/go-auth/internal/app"
 	"github.com/runAlgo/go-auth/internal/httpserver"
 )
 
 func main() {
+	// root context
+	ctx := context.Background()
+
+	a, err := app.New(ctx)
+	if err != nil {
+		log.Fatalf("Startup failed: %v", err)
+	}
+
+	defer func(){
+		if err := a.Close(ctx); err != nil {
+			log.Printf("Shutdown warning: %v", err)
+		}
+	}()
 
 	router := httpserver.NewRouter()
 
