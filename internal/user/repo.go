@@ -1,0 +1,61 @@
+package user
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type Repo struct {
+	col *mongo.Collection
+}
+
+func NewRepo(db *mongo.Database) *Repo {
+	return &Repo{
+		col: db.Collection("users"),
+	}
+}
+
+
+func (r *Repo) FindByEmail(ctx context.Context, email string) (User, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	filter := bson.M{"email": email}
+
+	var u User
+
+	err := r.col.FindOne(ctx, filter).Decode(&u)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return User{}, mongo.ErrNoDocuments
+		}
+
+		return User{}, fmt.Errorf("find by email failed: %w", err)
+	}
+
+	return u, nil 
+}
+
+
+
+
+func (r *Repo) Create(ctx context.Context, u User) (User, error) {
+	res, err := r.col.InsertOne(ctx, u)
+	if err != nil {
+		return User{}, fmt.Errorf("Insert user failed: %w", err)
+	}
+	id, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return User{}, fmt.Errorf("Insert user failed and inserted id is not objectid")
+	}
+
+	u.ID = id
+
+	return u, nil 
+
+}
